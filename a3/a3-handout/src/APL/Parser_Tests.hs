@@ -104,11 +104,11 @@ tests =
         ],
       testGroup
         "Lambda"
-        [ parserTest "\\x -> x" $ Lambda "x" (Var "x"),
-          parserTest "\\x -> x + y" $ Lambda "x" (Add (Var "x") (Var "y")),
-          parserTest "\\x -> x + y + z" $ Lambda "x" (Add (Add (Var "x") (Var "y")) (Var "z")),
-          parserTest "\\x -> x + (y + z)" $ Lambda "x" (Add (Var "x") (Add (Var "y") (Var "z"))),
-          parserTest "\\x -> x**y*z" $ Lambda "x" (Mul (Pow (Var "x") (Var "y")) (Var "z"))
+        [ parserTest "\\x->x" $ Lambda "x" (Var "x"),
+          parserTest "\\x->x + y" $ Lambda "x" (Add (Var "x") (Var "y")),
+          parserTest "\\x->x + y + z" $ Lambda "x" (Add (Add (Var "x") (Var "y")) (Var "z")),
+          parserTest "\\x->x + (y + z)" $ Lambda "x" (Add (Var "x") (Add (Var "y") (Var "z"))),
+          parserTest "\\x->x**y*z" $ Lambda "x" (Mul (Pow (Var "x") (Var "y")) (Var "z"))
         ],
       testGroup
         "TryCatch"

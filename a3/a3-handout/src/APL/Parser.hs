@@ -49,6 +49,15 @@ lVName = lexeme $ try $ do
     then fail "Unexpected keyword"
     else pure v
 
+vName :: Parser VName
+vName = try $ do
+  c <- satisfy isAlpha
+  cs <- many $ satisfy isAlphaNum
+  let v = c : cs
+  if v `elem` keywords
+    then fail "Unexpected keyword"
+    else pure v
+
 lInteger :: Parser Integer
 lInteger =
   lexeme $ read <$> some (satisfy isDigit) <* notFollowedBy (satisfy isAlphaNum)
@@ -65,6 +74,9 @@ lPrint = lexeme $ try $ do
 
 lKeyword :: String -> Parser ()
 lKeyword s = lexeme $ void $ try $ chunk s <* notFollowedBy (satisfy isAlphaNum)
+
+arrow :: Parser ()
+arrow = void $ try $ chunk "->"
 
 lBool :: Parser Bool
 lBool =
@@ -83,14 +95,17 @@ pAtom =
     ]
 
 pFExp :: Parser Exp
-pFExp =
-  choice
-    [ do
-        func <- pAtom
-        args <- many pAtom
-        pure $ foldl Apply func args,
-      pAtom
-    ]
+pFExp = do
+  func <- pAtom
+  chain func
+  where
+    chain x =
+      choice
+        [ do
+            arg <- pAtom
+            chain $ Apply x arg,
+          pure x
+        ]
 
 pLExp :: Parser Exp
 pLExp =
@@ -103,7 +118,7 @@ pLExp =
       KvGet <$> (lKeyword "get" *> pAtom),
       KvPut <$> (lKeyword "put" *> pAtom) <*> pAtom,
       Lambda
-        <$> (satisfy (== '\\') *> lVName <* lKeyword "->")
+        <$> (satisfy (== '\\') *> vName <* arrow)
         <*> pExp,
       TryCatch <$> (lKeyword "try" *> pExp) <*> (lKeyword "catch" *> pExp),
       Let
@@ -113,8 +128,8 @@ pLExp =
       pFExp
     ]
 
-pExp2 :: Parser Exp
-pExp2 = do
+pExp3 :: Parser Exp
+pExp3 = do
   x <- pLExp
   chain x
   where
@@ -122,25 +137,41 @@ pExp2 = do
       choice
         [ do
             lString "**"
-            Pow x <$> pExp2,
+            Pow x <$> pExp3,
           pure x
         ]
 
-pExp1 :: Parser Exp
-pExp1 = do
-  x <- pExp2
+pExp2 :: Parser Exp
+pExp2 = do
+  x <- pExp3
   chain x
   where
     chain x =
       choice
         [ do
             lString "*"
-            y <- pExp2
+            y <- pExp3
             chain $ Mul x y,
           do
             lString "/"
-            y <- pExp2
+            y <- pExp3
             chain $ Div x y,
+          pure x
+        ]
+
+pExp1 :: Parser Exp
+pExp1 = pExp2 >>= chain
+  where
+    chain x =
+      choice
+        [ do
+            lString "+"
+            y <- pExp2
+            chain $ Add x y,
+          do
+            lString "-"
+            y <- pExp2
+            chain $ Sub x y,
           pure x
         ]
 
@@ -150,30 +181,14 @@ pExp0 = pExp1 >>= chain
     chain x =
       choice
         [ do
-            lString "+"
-            y <- pExp1
-            chain $ Add x y,
-          do
-            lString "-"
-            y <- pExp1
-            chain $ Sub x y,
-          pure x
-        ]
-
-pExp3 :: Parser Exp
-pExp3 = pExp0 >>= chain
-  where
-    chain x =
-      choice
-        [ do
             lString "=="
-            y <- pExp0
+            y <- pExp1
             chain $ Eql x y,
           pure x
         ]
 
 pExp :: Parser Exp
-pExp = pExp3
+pExp = pExp0
 
 parseAPL :: FilePath -> String -> Either String Exp
 parseAPL fname s = case parse (space *> pExp <* eof) fname s of
