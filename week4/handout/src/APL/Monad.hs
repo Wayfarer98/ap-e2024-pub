@@ -72,12 +72,14 @@ data EvalOp a
   | StateGetOp (State -> a)
   | StatePutOp State a
   | PrintOp String a
+  | ErrorOp Error
 
 instance Functor EvalOp where
   fmap f (ReadOp k) = ReadOp $ f . k
   fmap f (StateGetOp k) = StateGetOp $ f . k
   fmap f (StatePutOp state m) = StatePutOp state $ f m
   fmap f (PrintOp s m) = PrintOp s $ f m
+  fmap _ (ErrorOp e) = ErrorOp e
 
 type EvalM a = Free EvalOp a
 
@@ -109,7 +111,7 @@ evalPrint :: String -> EvalM ()
 evalPrint s = Free $ PrintOp s (Pure ())
 
 failure :: String -> EvalM a
-failure = error "TODO"
+failure err = Free $ ErrorOp err
 
 catch :: EvalM a -> EvalM a -> EvalM a
 catch = error "To be completed in assignment 4."

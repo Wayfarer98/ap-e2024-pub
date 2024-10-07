@@ -9,7 +9,7 @@ import APL.Util (captureIO)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
 
-eval' :: Exp -> Val
+eval' :: Exp -> ([String], Either Error Val)
 eval' = runEval . eval
 
 evalIO' :: Exp -> IO (Either Error Val)
@@ -26,12 +26,18 @@ pureTests =
         "ReaderOp"
         [ testCase "Let" $
             eval' (Let "x" (Add (CstInt 2) (CstInt 3)) (Var "x"))
-              @?= ValInt 5,
+              @?= ([], Right $ ValInt 5),
           testCase
             "LocalEnv"
             $ runEval
               (localEnv (const [("x", ValInt 1)]) $ askEnv)
-              @?= [("x", ValInt 1)]
+              @?= ([], Right [("x", ValInt 1)])
+        ],
+      testGroup
+        "StateOp"
+        [ testCase "StateGet" $
+            eval' (Let "x" (KvPut (CstInt 0) (CstInt 1)) (KvGet (Var "x")))
+              @?= ([], Right $ ValInt 1)
         ]
     ]
 
