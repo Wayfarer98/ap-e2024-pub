@@ -168,6 +168,7 @@ schedule = do
           }
     _ -> pure ()
 
+-- Precondition: 'jobid' is currently running.
 jobDone :: JobId -> JobDoneReason -> SPCM ()
 jobDone jobid reason = do
   state <- get
@@ -184,6 +185,7 @@ jobDone jobid reason = do
         state
           { spcWaiting = not_waiting_for_job,
             spcJobsDone = (jobid, reason) : spcJobsDone state,
+            spcJobRunning = Nothing,
             spcJobsPending = removeAssoc jobid $ spcJobsPending state
           }
 
@@ -195,7 +197,6 @@ checkTimeouts = do
     Just (jobid, deadline, tid)
       | now >= deadline -> do
           io $ killThread tid
-          put $ state {spcJobRunning = Nothing}
           jobDone jobid DoneTimeout
     _ -> pure ()
 
